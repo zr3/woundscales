@@ -1,0 +1,80 @@
+#!/bin/bash
+
+# carve
+# v1.0
+
+# This script is used to copy and manage save files for the game Dwarf Fortress.
+# It allows for copying save files to and from a specified location and for setting the location and region number.
+#
+# Usage:
+#     ./carve to         # copies the save file to the location
+#     ./carve from       # copies the save file from the location
+#     ./carve set location /path/to/location   # sets the location
+#     ./carve set region number    # sets the region number
+#     ./carve help       # shows usage information
+
+# Exit on errors
+set -e
+
+# Set the default location and region number
+default_location="/mnt/c/Program Files (x86)/Steam/steamapps/common/Dwarf Fortress/save"
+default_region="2"
+
+# Check if the .config file exists
+if [ ! -f ".config" ]; then
+  # Create the .config file with the default location and region number
+  echo "location=$default_location" > .config
+  echo "region=$default_region" >> .config
+fi
+
+# Read the location and region number from the .config file
+location=$(grep "location" .config | cut -d "=" -f 2)
+region=$(grep "region" .config | cut -d "=" -f 2)
+
+# Construct the filename with the region number
+regionname="region$region"
+
+# Check if the parameter is "to" or "from"
+if [ "$1" == "to" ]; then
+  # Copy the file to the location
+  cp "./save/$regionname.tar.gz" "$location"
+  pushd "$location"
+  rm -rf "$regionname"
+  tar -xvzf "$regionname.tar.gz"
+  rm "$regionname.tar.gz"
+  popd
+elif [ "$1" == "from" ]; then
+  # Copy the file from the location
+  pushd "$location"
+  tar -cvzf "./$regionname.tar.gz" "$regionname"
+  popd
+  rm "./save/$regionname.tar.gz"
+  mv "$location/$regionname.tar.gz" ./save
+elif [ "$1" == "set" ]; then
+  # Check if the second parameter is "location" or "region"
+  if [ "$2" == "location" ]; then
+    # Update the location in the .config file
+    sed -i "s|location=.*|location=$3|" .config
+    # Read the new location from the .config file
+    location=$3
+  elif [ "$2" == "region" ]; then
+    # Update the region number in the .config file
+    sed -i "s|region=.*|region=$3|" .config
+    # Read the new region number from the .config file
+    region=$3
+  else
+    echo "Invalid configuration. Please specify 'location' or 'region'."
+  fi
+elif [ "$1" == "help" ]; then
+   echo "This script is used to copy and manage save files for the game Dwarf Fortress."
+   echo "It allows for copying save files to and from a specified location and for"
+   echo "setting the location and region number."
+   echo "Usage:"
+   echo " ./carve to # copies the save file to the location"
+   echo " ./carve from # copies the save file from the location"
+   echo " ./carve set location /path/to/location # sets the location"
+   echo " ./carve set region number # sets the region number"
+   echo " ./carve help # shows usage information"
+else
+  echo "Invalid parameter. Please specify 'to', 'from', 'set [location|region] [value]' or 'help'."
+fi
